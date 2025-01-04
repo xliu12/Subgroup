@@ -11,7 +11,10 @@ library(mlr3extralearners)
 
 source("simulation/_gendata.R")
 
-devtools::load_all("Subgroup")
+# install the package from github
+# devtools::install_github("xliu12/Subgroup", subdir = "Subgroup")
+library(Subgroup)
+
 # Simulation----------------------------
 
 condition_all <- data.frame(expand.grid(
