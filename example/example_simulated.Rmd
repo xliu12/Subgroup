@@ -1,0 +1,164 @@
+---
+title: "An Example"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE)
+```
+
+# Set up 
+
+
+```{r,message=FALSE}
+library(origami)
+library(mvtnorm)
+library(tidyverse)
+library(glue)
+library(latex2exp)
+library(labelled)
+library(haven)
+library(SuperLearner)
+library(mlr3superlearner)
+library(mlr3extralearners)
+
+```
+
+```{r}
+# install the package from github
+# devtools::install_github("xliu12/Subgroup", subdir = "Subgroup")
+library(Subgroup)
+```
+
+
+# Data
+
+- R: subgroup status
+- tt: treatment variable
+- Y: outcome variable
+- X.1, X.2, X.3: baseline covariates
+
+```{r}
+data <- read.csv("../example/data_example_simulated.csv")
+head(data)
+```
+ 
+# Analysis
+
+
+```{r,cache=TRUE}
+# specify model estimation methods
+learners <- c("gam", "glm", "ranger", "earth", "svm", "lightgbm")
+
+# specify the increment odds ratio `delta` values
+deltas <- unique(c(1/seq(1, 10, 0.5), 1, seq(1, 10, 0.5))) %>% sort()
+
+# run 
+out <- Subgroup::incremental.inclusion(
+      data = data,
+      subgroup = "R",
+      treatment = "tt",
+      outcome = "Y",
+      covariates = grep("^X", colnames(data), value = TRUE),
+      deltas = deltas,
+      learners = learners
+)
+```
+
+
+
+
+# Plot
+
+Making plots of estimates and confidence intervals of the incremental subgroup effects and expected potential outcomes.
+
+```{r,echo=FALSE}
+
+label_estimand <- function(what, Yname = "Outcome") {
+    wh <- case_when(what == "ATE" ~ glue("Average treatment effect"),
+                    what == "Y1Y0" ~ glue("{Yname}"),
+              what == "Y1" ~ glue("{Yname} under Intervention"),
+              what == "Y0" ~ glue("{Yname} under Control"))
+    wh
+}
+label_condition <- function(what) {
+    wh <- case_when(
+              what == "Y1" ~ glue("Intervention"),
+              what == "Y0" ~ glue("Control"))
+    wh
+}
+
+plot.estimates <- function(estimates, deltas, what = "ATE", subgroup_focal = "focal subgroup", Yname = "Outcome") {
+  estimates <- estimates %>% 
+    filter(delta >= 1/10 & delta <=10) %>% 
+    select(delta, everything())
+  estimates %>% head()
+
+  titlename <- as.character(glue("Incremental inclusion for {subgroup_focal}"))
+
+  xlabname <- latex2exp::TeX("Increment odds ratio $\\delta$")
+  titlename <- latex2exp::TeX(titlename)
+  
+  ylabname <- label_estimand(what, Yname)
+  xbreaks <- as.character(c(1/10, 1/5, 1/2, 1, 2, 5, 10))
+
+  theme1 <- theme_bw() +
+    theme(panel.grid.minor.x = element_blank(),
+          strip.text = element_text(size = 12),
+          axis.title = element_text(size = 11),
+          axis.text = element_text(size = 11))
+  
+  if (what == "ATE") {
+  p1 <- estimates %>% 
+    filter(str_detect(estimand, what)) %>% 
+    ggplot(aes(x = factor(delta), group = 1)) +
+    geom_line(aes(y = estimate), color = "darkgreen", linewidth = 1.2) +
+    geom_ribbon(aes(ymin = ci.low, ymax = ci.high), alpha = 0.2, fill = "green", color = "green", linetype = "dotted") +
+    geom_vline(xintercept = "1", linetype = "dotted") +
+    labs(y = TeX("Incremental subgroup effect ($ATE_\\delta$)"), 
+         x = xlabname, title = titlename) +
+    scale_x_discrete(breaks = xbreaks ) +
+    theme1
+    
+    # ggsave(glue("../example/plot_ATE_{subgroup_focal}.pdf"), width =7, height = 6)
+  }
+  
+  
+  if (what == "Y1Y0") {
+    p1 <- estimates %>% 
+      filter(str_detect(estimand, "Y")) %>% 
+      mutate(estimand = substr(estimand, 1, 2)) %>% 
+      ggplot(aes(x = factor(delta), group = 1)) +
+      facet_grid(~ estimand, labeller = labeller(estimand = label_condition)) +
+      geom_line(aes(y = estimate, color = estimand), linewidth = 1.2) +
+      geom_ribbon(aes(ymin = ci.low, ymax = ci.high, fill = estimand, color = estimand), alpha = 0.2, linetype = "dotted") +
+      geom_vline(xintercept = "1", linetype = "dotted") +
+      labs(y = ylabname, x = xlabname, title = titlename) +
+      scale_x_discrete(breaks = xbreaks ) +
+      theme1 +
+      theme(legend.position = "none",
+            panel.spacing = unit(1, "lines"))
+    
+    
+    # ggsave(glue("../example/plot_Y1Y0_{subgroup_focal}.pdf"), width = 10, height = 6)
+  }
+  p1
+  
+}
+
+
+```
+
+
+Plotting the incremental subgroup effects:
+
+```{r}
+plot.estimates(out$ATE_deltas, deltas, "ATE")
+```
+
+Plotting the expected potential outcomes:
+
+```{r}
+plot.estimates(out$ATE_deltas, deltas, "Y1Y0")
+```
+
