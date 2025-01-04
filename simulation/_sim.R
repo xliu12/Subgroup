@@ -64,7 +64,7 @@ OneData <- function(iseed = 1, cond = 1){
     quadratic.Y = condition$quadratic.Y[cond]
   )
   data <- gen_data$datobs
-  # write.csv(data, "example/data_example_simulated.csv", row.names = FALSE)
+  
   covariates <- grep("^X", colnames(data), value = TRUE)
   
   # data[, covariates] <- data[, covariates]^2
