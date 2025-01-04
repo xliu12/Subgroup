@@ -2,8 +2,8 @@
 GenData <- function(
     sim.seed = 123,
     n = 500,
-    proportion_r1 = 0.05,
-    Yfamily = "binomial", # "gaussian",
+    proportion_r1 = 0.5,
+    Yfamily = "gaussian",
     deltas = c(1/20, 20),
     quadratic.tt = FALSE,
     quadratic.Y = FALSE,
@@ -12,19 +12,14 @@ GenData <- function(
 ) {
   set.seed(seed = sim.seed)
   
-  # num_x <- 5
+  
   X <- rmvnorm(n, sigma = diag(1, nrow = num_x))
   
   R <- rbinom(n, 1, prob = r.gen(X, intercept = qnorm(proportion_r1)))
   
   tt <- rbinom(n, 1, prob = tt.gen(R, X, quadratic = quadratic.tt))
   
-  if (Yfamily == "gaussian") {
-    Y <- rnorm(n, mean = y.gen(tt, R, X, quadratic = quadratic.Y), sd = 1)
-  }
-  if (Yfamily == "binomial") {
-    Y <- rbinom(n, 1, prob = pnorm(y.gen(tt, R, X, quadratic = quadratic.Y)-1))
-  }
+  Y <- rnorm(n, mean = y.gen(tt, R, X, quadratic = quadratic.Y), sd = 1)
   
   datobs <- data.frame(R, tt, Y, X=X)
   
@@ -81,12 +76,6 @@ true.val <- function(delta, X, r.intercept, Yfamily, quadratic.Y = FALSE) {
         Reduce(`+`, .)
     }
     
-    if (Yfamily == "binomial") {
-      v_x[[glue("Y{tval}|Rq_delta{round(delta,2)}")]] <- lapply(rvals, \(rval=1) {
-        pnorm(y.gen(tt = tval, R = rval, X, quadratic.Y)) * q_r[[glue("qr{rval}")]]
-      }) %>%
-        Reduce(`+`, .)
-    }
     
   }
   
