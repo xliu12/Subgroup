@@ -1,0 +1,35 @@
+Package: Subgroup
+Title: Subgroup analysis
+Version: 0.1.4
+Author: Xiao Liu <xiao.liu19@outlook.com>
+Maintainer: Xiao Liu <xiao.liu19@outlook.com>
+Description: Methods for subgroup and moderation analysis based on incremental inclusion of the subgroups.
+Depends: R (>= 4.0.0)
+Imports:
+    stats,
+    glue,
+    purrr,
+    S7,
+    mlr3superlearner,
+    tidyverse,
+    data.table,
+    assertthat,
+    origami,
+    mvtnorm,
+    SuperLearner,
+    checkmate
+Suggests:
+    testthat,
+    knitr,
+    rmarkdown,
+    stringr,
+    glmnet,
+    hal9001,
+    xgboost,
+    ranger,
+    mma
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+VignetteBuilder: knitr, rmarkdown
+RoxygenNote: 7.3.1

@@ -1,0 +1,83 @@
+
+
+
+
+
+# variables ------------
+
+variables <- S7::new_class("variables",
+                              properties = list(
+                                tt = S7::class_character,
+                                R = S7::class_character,
+                                ttR = S7::class_character,
+                                Y = S7::class_character,
+                                X = S7::class_character
+                              ),
+                              validator = function(self) {
+                                if (length(self@tt) != 1) {
+                                  "self@treatment must be length 1"
+                                } else if (length(self@R) != 1) {
+                                  "self@subgroup must be length 1"
+                                }
+                              }
+)
+
+# data -----------
+
+analysis_data <- S7::new_class("analysis_data",
+                              properties = list(
+                                data = S7::new_property(S7::class_data.frame),
+                                varn = S7::new_property(S7::new_class("variables")),
+                                tt0 = S7::new_property(S7::class_double, default = NULL),
+                                tt1 = S7::new_property(S7::class_double, default = NULL),
+                                data_t0r0 = S7::new_property(S7::class_data.frame),
+                                data_t1r0 = S7::new_property(S7::class_data.frame),
+                                data_t0r1 = S7::new_property(S7::class_data.frame),
+                                data_t1r1 = S7::new_property(S7::class_data.frame)
+                              ),
+                              constructor = function(data, varn, tt0, tt1) {
+
+                                S7::new_object(
+                                  S7::S7_object(),
+                                  data = data,
+                                  varn = varn,
+                                  tt0 = tt0,
+                                  tt1 = tt1,
+                                  data_t0r0 = shift_data(data, tt = varn@tt, R = varn@R, t_shift = tt0, r_shift = 0),
+                                  data_t1r0 = shift_data(data, tt = varn@tt, R = varn@R, t_shift = tt1, r_shift = 0),
+                                  data_t0r1 = shift_data(data, tt = varn@tt, R = varn@R, t_shift = tt0, r_shift = 1),
+                                  data_t1r1 = shift_data(data, tt = varn@tt, R = varn@R, t_shift = tt1, r_shift = 1)
+                                )
+                              },
+                              validator = function(self) {
+                                all_varn <- c(self@varn@tt, self@varn@X, self@varn@R, self@varn@Y)
+                                all_varn <- as.vector(na.omit(all_varn))
+
+                                if (!all(all_varn %in% names(self@data))) {
+                                  "self@data must contain all variables in self@varn"
+                                }
+                              }
+)
+
+training <- S7::new_generic("training", "x")
+validation <- S7::new_generic("validation", "x")
+
+S7::method(training, analysis_data) <- function(x, fold_obj, fold) {
+  list(
+    data = x@data[fold_obj[[fold]]$training_set, , drop = FALSE],
+    data_t0r0 = x@data_t0r0[fold_obj[[fold]]$training_set, , drop = FALSE],
+    data_t1r0 = x@data_t1r0[fold_obj[[fold]]$training_set, , drop = FALSE],
+    data_t0r1 = x@data_t0r1[fold_obj[[fold]]$training_set, , drop = FALSE],
+    data_t1r1 = x@data_t1r1[fold_obj[[fold]]$training_set, , drop = FALSE]
+  )
+}
+
+S7::method(validation, analysis_data) <- function(x, fold_obj, fold) {
+  list(
+    data = x@data[fold_obj[[fold]]$validation_set, , drop = FALSE],
+    data_t0r0 = x@data_t0r0[fold_obj[[fold]]$validation_set, , drop = FALSE],
+    data_t1r0 = x@data_t1r0[fold_obj[[fold]]$validation_set, , drop = FALSE],
+    data_t0r1 = x@data_t0r1[fold_obj[[fold]]$validation_set, , drop = FALSE],
+    data_t1r1 = x@data_t1r1[fold_obj[[fold]]$validation_set, , drop = FALSE]
+  )
+}
